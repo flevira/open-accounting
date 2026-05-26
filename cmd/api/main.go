@@ -366,6 +366,9 @@ func setupRouter(cfg *Config, h *Handlers, tokenService *auth.TokenService) *chi
 			r.Route("/tenants/{tenantID}", func(r chi.Router) {
 				r.Use(h.TenantContext)
 
+				// Tenant management (also mounted here so tenant-scoped middleware applies)
+				r.Put("/", h.UpdateTenant)
+
 				// Onboarding
 				r.Post("/complete-onboarding", h.CompleteOnboarding)
 				r.Get("/period-close-events", h.ListPeriodCloseEvents)
