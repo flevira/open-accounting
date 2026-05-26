@@ -305,6 +305,11 @@ func setupRouter(cfg *Config, h *Handlers, tokenService *auth.TokenService) *chi
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
+		// Explicitly answer preflight requests to avoid 404s on OPTIONS for route patterns.
+		r.Options("/*", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
+
 		// Public routes
 		r.Post("/auth/register", h.Register)
 		r.Post("/auth/login", h.Login)

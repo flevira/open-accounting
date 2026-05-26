@@ -103,3 +103,23 @@ func TestSetupRouterDisablesRateLimitInDemoMode(t *testing.T) {
 	assert.NotEqual(t, http.StatusNotFound, rr.Code)
 	assert.Equal(t, "http://localhost:5173", rr.Header().Get("Access-Control-Allow-Origin"))
 }
+
+func TestSetupRouterHandlesAuthRegisterPreflight(t *testing.T) {
+	cfg := &Config{AllowedOrigins: []string{"http://localhost:5173"}}
+	tokenService := auth.NewTokenService("secret", time.Minute, time.Hour)
+
+	t.Setenv("DEMO_MODE", "true")
+
+	router := setupRouter(cfg, &Handlers{}, tokenService)
+	req := httptest.NewRequest(http.MethodOptions, "/api/v1/auth/register", nil)
+	req.Header.Set("Origin", "http://localhost:5173")
+	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	req.Header.Set("Access-Control-Request-Headers", "content-type")
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	assert.NotEqual(t, http.StatusNotFound, rr.Code)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "http://localhost:5173", rr.Header().Get("Access-Control-Allow-Origin"))
+}
