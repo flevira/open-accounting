@@ -35,9 +35,10 @@ export function getApiBase(): string {
   // Guard against common deployment misconfiguration where PUBLIC_API_URL
   // accidentally points to the frontend Railway service ("-fe-").
   // In that case API requests return HTML 404 pages instead of JSON.
-  // We auto-correct to the matching backend service ("-api-").
+  // We auto-correct to the matching backend service ("-be-").
+  // Older environments may use "-api-", but production uses "-be-".
   if (/\.up\.railway\.app$/i.test(url) && /-fe-/i.test(url)) {
-    url = url.replace(/-fe-/i, "-api-");
+    url = url.replace(/-fe-/i, "-be-");
   }
 
   return url;
