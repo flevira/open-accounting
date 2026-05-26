@@ -259,6 +259,17 @@ func loadConfig() *Config {
 func setupRouter(cfg *Config, h *Handlers, tokenService *auth.TokenService) *chi.Mux {
 	r := chi.NewRouter()
 
+	// Return a non-404 response for unmatched CORS preflight requests.
+	// This prevents browsers from failing early on OPTIONS when route matching differs
+	// across deployments/proxies and still allows CORS middleware to set headers.
+	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		http.NotFound(w, req)
+	})
+
 	// Middleware
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
