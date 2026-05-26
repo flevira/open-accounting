@@ -380,7 +380,19 @@ class ApiClient {
   }
 
   async getMyTenants() {
-    return this.request<TenantMembership[]>("GET", "/api/v1/me/tenants");
+    const response = await this.request<
+      TenantMembership[] | { tenants?: TenantMembership[] } | null
+    >("GET", "/api/v1/me/tenants");
+
+    if (Array.isArray(response)) {
+      return response;
+    }
+
+    if (response && Array.isArray(response.tenants)) {
+      return response.tenants;
+    }
+
+    return [];
   }
 
   // Tenant endpoints
