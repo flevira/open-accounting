@@ -223,6 +223,39 @@ describe("API Client - Core Functionality", () => {
       expect(result).toHaveLength(1);
       expect(result[0].role).toBe("admin");
     });
+
+    it("should return empty array when tenant response is null", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => null,
+      });
+
+      const result = await api.getMyTenants();
+
+      expect(result).toEqual([]);
+    });
+
+    it("should support wrapped tenant response format", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          tenants: [
+            {
+              tenant: { id: "tenant-1", name: "Tenant One" },
+              role: "admin",
+              is_default: true,
+            },
+          ],
+        }),
+      });
+
+      const result = await api.getMyTenants();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].tenant.id).toBe("tenant-1");
+    });
   });
 
   describe("Tenant Endpoints", () => {
