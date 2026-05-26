@@ -1,8 +1,10 @@
 package auth
 
 import (
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -71,28 +73,37 @@ func (rl *RateLimiter) cleanupVisitors() {
 	}
 }
 
-// getClientIP extracts the client IP from the request
+// getClientIP extracts the client IP from the request.
+//
+// Header order prefers single-hop client IP headers set by edge proxies/CDNs,
+// then falls back to X-Forwarded-For, and finally to RemoteAddr.
 func getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header (for proxies)
-	xff := r.Header.Get("X-Forwarded-For")
-	if xff != "" {
-		// Take the first IP in the chain
-		for i := 0; i < len(xff); i++ {
-			if xff[i] == ',' {
-				return xff[:i]
+	if ip := strings.TrimSpace(r.Header.Get("CF-Connecting-IP")); ip != "" {
+		return ip
+	}
+
+	if ip := strings.TrimSpace(r.Header.Get("True-Client-IP")); ip != "" {
+		return ip
+	}
+
+	if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
+		return ip
+	}
+
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		if len(parts) > 0 {
+			if ip := strings.TrimSpace(parts[0]); ip != "" {
+				return ip
 			}
 		}
-		return xff
 	}
 
-	// Check X-Real-IP header
-	xri := r.Header.Get("X-Real-IP")
-	if xri != "" {
-		return xri
+	if host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr)); err == nil {
+		return host
 	}
 
-	// Fall back to RemoteAddr
-	return r.RemoteAddr
+	return strings.TrimSpace(r.RemoteAddr)
 }
 
 // Middleware returns a rate limiting middleware handler

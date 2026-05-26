@@ -280,7 +280,7 @@ func TestGetClientIP(t *testing.T) {
 		{
 			name:       "RemoteAddr only",
 			remoteAddr: "192.168.1.1:12345",
-			expected:   "192.168.1.1:12345",
+			expected:   "192.168.1.1",
 		},
 		{
 			name:       "X-Forwarded-For single IP",
@@ -301,11 +301,11 @@ func TestGetClientIP(t *testing.T) {
 			expected:   "203.0.113.2",
 		},
 		{
-			name:       "X-Forwarded-For takes precedence over X-Real-IP",
+			name:       "X-Real-IP takes precedence over X-Forwarded-For",
 			remoteAddr: "10.0.0.1:12345",
 			xff:        "203.0.113.1",
 			xri:        "203.0.113.2",
-			expected:   "203.0.113.1",
+			expected:   "203.0.113.2",
 		},
 	}
 
@@ -430,5 +430,27 @@ func TestRateLimiter_NegativeTokensOnSuccessPath(t *testing.T) {
 	remaining := rr.Header().Get("X-RateLimit-Remaining")
 	if remaining != "" && len(remaining) > 0 && remaining[0] == '-' {
 		t.Errorf("X-RateLimit-Remaining should not be negative on success, got %s", remaining)
+	}
+}
+
+func TestGetClientIP_RemoteAddrStripsPort(t *testing.T) {
+	req := httptest.NewRequest("GET", "/", nil)
+	req.RemoteAddr = "198.51.100.10:54321"
+
+	ip := getClientIP(req)
+	if ip != "198.51.100.10" {
+		t.Errorf("expected remote host without port, got %q", ip)
+	}
+}
+
+func TestGetClientIP_PrefersCFConnectingIP(t *testing.T) {
+	req := httptest.NewRequest("GET", "/", nil)
+	req.RemoteAddr = "10.0.0.1:12345"
+	req.Header.Set("X-Forwarded-For", "203.0.113.50, 10.0.0.1")
+	req.Header.Set("CF-Connecting-IP", "198.51.100.25")
+
+	ip := getClientIP(req)
+	if ip != "198.51.100.25" {
+		t.Errorf("expected CF-Connecting-IP to be used, got %q", ip)
 	}
 }
